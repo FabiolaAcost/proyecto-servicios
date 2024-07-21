@@ -3,6 +3,7 @@ package cl.fabiacosta.proyecto_servicios
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -34,36 +36,35 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var meterReadingRepository: MeterReadingRepository
+    private val meterReadingRepository: MeterReadingRepository by lazy {
+        MeterReadingRepository.getInstance(this)
+    }
+
+    private val viewModel: MeterReadingViewModel by viewModels {
+        MeterReadingViewModelFactory(meterReadingRepository)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        meterReadingRepository = MeterReadingRepository.getInstance(this)
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            meterReadingsDePrueba().forEach {
-                meterReadingRepository.agregar(it)
-            }
-        }
 
         setContent {
             val navController = rememberNavController()
-            App(navController, meterReadingRepository)
+            App(navController, viewModel)
         }
     }
 }
 
 @Composable
-fun App(navController: NavHostController, meterReadingRepository: MeterReadingRepository) {
+fun App(navController: NavHostController, viewModel: MeterReadingViewModel) {
     NavHost(navController = navController, startDestination = "inicio") {
         composable("inicio") {
-            MeterReadingsApp(onAddClick = {
+            MeterReadingsApp(viewModel = viewModel, onAddClick = {
                 navController.navigate("formulario")
             })
         }
         composable("formulario") {
             MeterReadingForm(
-                meterReadingRepository = meterReadingRepository,
+                viewModel = viewModel,
                 onSaveComplete = {
                     navController.popBackStack()
                 },
@@ -76,15 +77,8 @@ fun App(navController: NavHostController, meterReadingRepository: MeterReadingRe
 }
 
 @Composable
-fun MeterReadingsApp(onAddClick: () -> Unit) {
-    val context = LocalContext.current
-    var readings by remember { mutableStateOf(emptyList<MeterReading>()) }
-
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            readings = MeterReadingRepository.getInstance(context).obtenerTodos()
-        }
-    }
+fun MeterReadingsApp(viewModel: MeterReadingViewModel, onAddClick: () -> Unit) {
+    val readings by viewModel.readings.collectAsStateWithLifecycle()
 
     Scaffold(
         floatingActionButton = {
@@ -103,6 +97,7 @@ fun MeterReadingsApp(onAddClick: () -> Unit) {
         }
     }
 }
+
 
 @Composable
 fun ReadingListUI(readings: List<MeterReading>) {
@@ -161,14 +156,13 @@ fun ReadingListUI(readings: List<MeterReading>) {
 
 @Composable
 fun MeterReadingForm(
-    meterReadingRepository: MeterReadingRepository,
+    viewModel: MeterReadingViewModel,
     onSaveComplete: () -> Unit,
     onCancel: () -> Unit
 ) {
     val (meterId, setMeterId) = remember { mutableStateOf("") }
     val (selectedMeterType, setSelectedMeterType) = remember { mutableStateOf("AGUA") }
     val date = LocalDate.now()
-    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -217,12 +211,8 @@ fun MeterReadingForm(
                     date = date,
                     meterType = selectedMeterType
                 )
-                coroutineScope.launch {
-                    withContext(Dispatchers.IO) {
-                        meterReadingRepository.agregar(reading)
-                    }
-                    onSaveComplete()
-                }
+                viewModel.addReading(reading)
+                onSaveComplete()
             }) {
                 Text("Registrar medición")
             }

@@ -69,6 +69,9 @@ dependencies {
 
     // collectAsStateWithLifecycle() - Flow
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
+
+    // ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation(libs.places)
     // ROOM
     val room_version = "2.6.1"
