@@ -63,6 +63,13 @@ dependencies {
     implementation ("androidx.compose.material:material-icons-core:1.4.3")
     implementation ("androidx.compose.material:material-icons-extended:1.4.3")
 
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+    // ViewModels para Compose
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+
+    // collectAsStateWithLifecycle() - Flow
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
+    implementation(libs.places)
     // ROOM
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")

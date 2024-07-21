@@ -1,27 +1,29 @@
 package cl.fabiacosta.proyecto_servicios
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.OilBarrel
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import cl.fabiacosta.proyecto_servicios.data.MeterReading
 import cl.fabiacosta.proyecto_servicios.data.MeterReadingRepository
 import cl.fabiacosta.proyecto_servicios.data.meterReadingsDePrueba
@@ -45,20 +47,30 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            var showForm by rememberSaveable { mutableStateOf(false) }
+            val navController = rememberNavController()
+            App(navController, meterReadingRepository)
+        }
+    }
+}
 
-            if (showForm) {
-                MeterReadingForm(onSave = { meterReading ->
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        meterReadingRepository.agregar(meterReading)
-                        showForm = false
-                    }
-                })
-            } else {
-                MeterReadingsApp(
-                    onAddClick = { showForm = true }
-                )
-            }
+@Composable
+fun App(navController: NavHostController, meterReadingRepository: MeterReadingRepository) {
+    NavHost(navController = navController, startDestination = "inicio") {
+        composable("inicio") {
+            MeterReadingsApp(onAddClick = {
+                navController.navigate("formulario")
+            })
+        }
+        composable("formulario") {
+            MeterReadingForm(
+                meterReadingRepository = meterReadingRepository,
+                onSaveComplete = {
+                    navController.popBackStack()
+                },
+                onCancel = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
@@ -103,15 +115,19 @@ fun ReadingListUI(readings: List<MeterReading>) {
                     .fillMaxWidth()
                     .padding(vertical = 8.dp, horizontal = 16.dp)
             ) {
-                // Icon based on meter type
                 val icon = when (reading.meterType) {
-                    "AGUA" -> Icons.Default.WaterDrop
-                    "LUZ" -> Icons.Default.Lightbulb
-                    "GAS" -> Icons.Default.OilBarrel
-                    else -> Icons.Default.Delete
+                    "AGUA" -> R.drawable.agua
+                    "LUZ" -> R.drawable.luz
+                    "GAS" -> R.drawable.gas
+                    else -> null
                 }
-                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp))
-
+                if (icon != null) {
+                    Image(
+                        painter = painterResource(id = icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
                 Spacer(modifier = Modifier.width(16.dp))
 
                 // Meter type
@@ -123,7 +139,7 @@ fun ReadingListUI(readings: List<MeterReading>) {
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // MEDICION
+                // Meter ID
                 Text(
                     text = reading.meterId,
                     style = MaterialTheme.typography.bodyMedium,
@@ -144,10 +160,15 @@ fun ReadingListUI(readings: List<MeterReading>) {
 }
 
 @Composable
-fun MeterReadingForm(onSave: (MeterReading) -> Unit) {
+fun MeterReadingForm(
+    meterReadingRepository: MeterReadingRepository,
+    onSaveComplete: () -> Unit,
+    onCancel: () -> Unit
+) {
     val (meterId, setMeterId) = remember { mutableStateOf("") }
     val (selectedMeterType, setSelectedMeterType) = remember { mutableStateOf("AGUA") }
     val date = LocalDate.now()
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -188,16 +209,27 @@ fun MeterReadingForm(onSave: (MeterReading) -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            val reading = MeterReading(
-                id = 0, // Room will auto-generate the ID
-                meterId = meterId,
-                date = date,
-                meterType = selectedMeterType
-            )
-            onSave(reading)
-        }) {
-            Text("Registrar medición")
+        Row {
+            Button(onClick = {
+                val reading = MeterReading(
+                    id = 0, // Room will auto-generate the ID
+                    meterId = meterId,
+                    date = date,
+                    meterType = selectedMeterType
+                )
+                coroutineScope.launch {
+                    withContext(Dispatchers.IO) {
+                        meterReadingRepository.agregar(reading)
+                    }
+                    onSaveComplete()
+                }
+            }) {
+                Text("Registrar medición")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Button(onClick = onCancel) {
+                Text("Cancelar")
+            }
         }
     }
 }
