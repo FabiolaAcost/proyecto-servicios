@@ -1,0 +1,10 @@
+<resources>
+<string name="app_name">proyecto_servicios</string>
+<string name="add_reading">Registrar medición</string>
+<string name="date">Fecha</string>
+<string name="value">Valor</string>
+<string name="water">Agua</string>
+<string name="electricity">Luz</string>
+<string name="gas">Gas</string>
+<string name="description">Descripción</string>
+</resources>
