@@ -19,10 +19,4 @@ interface MeterReadingDao {
 
     @Insert
     suspend fun insertAll(vararg readings: MeterReading)
-
-    @Update
-    suspend fun update(reading: MeterReading)
-
-    @Delete
-    suspend fun delete(reading: MeterReading)
 }

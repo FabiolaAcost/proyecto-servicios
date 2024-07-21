@@ -18,14 +18,16 @@ class MeterReadingRepository(
 
         fun getInstance(context: Context): MeterReadingRepository {
             return instance ?: synchronized(this) {
-                val database = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "meter_readings.db"
-                ).build()
-                MeterReadingRepository(database.meterReadingDao()).also {
-                    instance = it
-                }
+                instance ?: MeterReadingRepository(
+                    Room.databaseBuilder(
+                        context.applicationContext,
+                        AppDatabase::class.java,
+                        "meter_readings.db"
+                    )
+                        .fallbackToDestructiveMigration()
+                        .build()
+                        .meterReadingDao()
+                ).also { instance = it }
             }
         }
     }
